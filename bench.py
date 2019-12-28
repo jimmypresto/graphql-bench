@@ -120,7 +120,7 @@ def bench(args):
     if bench:
         benchSpecs = list(filter(lambda bs: bs['name'] == bench, benchSpecs))
         if not benchSpecs:
-            print("no such benchmark exists in the spec: {}".format(query))
+            print("no such benchmark exists in the spec: {}".format(bench))
             sys.exit(1)
     results = []
     for benchSpec in benchSpecs:
