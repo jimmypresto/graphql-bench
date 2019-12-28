@@ -19,7 +19,7 @@ fileLoc = os.path.dirname(os.path.abspath(__file__))
 def eprint(msg, indent):
     print((' ' * 2 * indent) + msg, file=sys.stderr)
 
-def runWrk2(url, queriesFile, query, headers, rps, openConns, duration, luaScript):
+def runWrk2(url, queriesFile, query, headers, rps, openConns, duration, timeout, luaScript):
 
     luaScript = luaScript if luaScript else os.path.join(fileLoc, "bench.lua")
 
@@ -31,7 +31,7 @@ def runWrk2(url, queriesFile, query, headers, rps, openConns, duration, luaScrip
          "-t", str(cpuCount),
          "-L",
          "-s", luaScript,
-         "--timeout", "1s",
+         "--timeout", str(timeout),
          url,
          queriesFile,
          query,
@@ -56,7 +56,7 @@ def runWrk2(url, queriesFile, query, headers, rps, openConns, duration, luaScrip
             eprint(l, 3)
         return json.loads(p.stderr)
 
-def benchCandidate(url, queriesFile, query, headers, rpsList, openConns, duration, luaScript):
+def benchCandidate(url, queriesFile, query, headers, rpsList, openConns, duration, timeout, luaScript):
     results = {}
     for rps in rpsList:
         eprint("+" * 20, 3)
@@ -65,7 +65,7 @@ def benchCandidate(url, queriesFile, query, headers, rpsList, openConns, duratio
             duration=duration,
             openConns=openConns
         ), 3)
-        res = runWrk2(url, queriesFile, query, headers, rps, openConns, duration, luaScript)
+        res = runWrk2(url, queriesFile, query, headers, rps, openConns, duration, timeout, luaScript)
         results[rps] = res
     return results
 
@@ -77,7 +77,7 @@ def benchQuery(benchParams):
     eprint("benchmark: {}".format(benchName), 0)
 
     rpsList = benchParams["rps"]
-    timeout = benchParams.get("timeout", 1)
+    timeout = benchParams.get("timeout", "1s")
     duration = benchParams["duration"]
     openConns = benchParams.get("open_connections", 20)
     warmupDuration = benchParams.get("warmup_duration", None)
@@ -102,11 +102,11 @@ def benchQuery(benchParams):
         if warmupDuration:
             eprint("Warmup:", 2)
             benchCandidate(candidateUrl, candidateQueriesFile, candidateQuery, candidateHeaders,
-                           rpsList, openConns, warmupDuration, candidateLuaScript)
+                           rpsList, openConns, warmupDuration, timeout, candidateLuaScript)
 
         eprint("Benchmark:", 2)
         candidateRes = benchCandidate(candidateUrl, candidateQueriesFile, candidateQuery, candidateHeaders,
-                                      rpsList, openConns, duration, candidateLuaScript)
+                                      rpsList, openConns, duration, timeout, candidateLuaScript)
         results[candidateName] = candidateRes
 
     return {
