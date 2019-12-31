@@ -2,6 +2,7 @@
 
 import yaml
 import json
+import csv
 
 import subprocess
 
@@ -10,6 +11,7 @@ import multiprocessing
 
 import sys
 import os
+import glob
 
 from plot import run_dash_server
 
@@ -19,112 +21,146 @@ fileLoc = os.path.dirname(os.path.abspath(__file__))
 def eprint(msg, indent):
     print((' ' * 2 * indent) + msg, file=sys.stderr)
 
-def runWrk2(url, queriesFile, query, headers, rps, openConns, duration, timeout, luaScript):
+def runBenchmarker(url, queries_file, query, headers, rps, open_connections, duration, timeout):
+    with open("/graphql-bench/ws/{}".format(queries_file), "r") as query_body_file:
+        with open("/graphql-bench/ws/{}.json".format(queries_file), "w+") as query_body_json_file:
+            json.dump({"query": query_body_file.read(),
+                       "operationName": query}, query_body_json_file)
 
-    luaScript = luaScript if luaScript else os.path.join(fileLoc, "bench.lua")
+    YOUR_BEARER_TOKEN = "Put your bears here."
+    allHeaders = ['-header',
+                  'Authorization: Bearer {}'.format(YOUR_BEARER_TOKEN)]
 
-    p = subprocess.run(
-        ["wrk2",
-         "-R", str(rps),
-         "-c", str(openConns),
-         "-d", str(duration),
-         "-t", str(cpuCount),
-         "-L",
-         "-s", luaScript,
-         "--timeout", str(timeout),
-         url,
-         queriesFile,
-         query,
-         json.dumps(headers or {})
-        ],
-        env = dict(
-            os.environ,
-            LUA_PATH="/usr/share/lua/5.1/?.lua;" + os.path.join(fileLoc, "?.lua") + ';;',
-            LUA_CPATH="/usr/lib/lua/5.1/?.so;/usr/lib/x86_64-linux-gnu/lua/5.1/?.so;;"
-        ),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        encoding='utf-8'
-    )
+    if headers != None:
+        for header in headers:
+            allHeaders.extend(['-header', header])
 
-    if p.returncode != 0:
-        for l in p.stderr.splitlines():
+    # Run the benchmark
+    with open("/graphql-bench/ws/results.gob", "w+") as result_gob:
+        subprocess.run(
+            ['vegeta',
+                'attack',
+                '-rate', "{}/1s".format(rps),
+                '-duration', "{}s".format(duration),
+                '-connections', "{}".format(open_connections),
+                '-timeout', "{}".format(timeout),
+                '-body', '/graphql-bench/ws/queries/Introspection.graphql.json']
+            + allHeaders,
+            input='POST {}'.format(url).encode('utf-8'),
+            stdout=result_gob,
+            stderr=subprocess.PIPE
+        )
+
+        result_gob.seek(0)
+
+        # Output a vegeta report in a JSON format to a file
+        with open("/graphql-bench/ws/metrics.json", "w+", encoding='utf-8') as metrics_json_file:
+            subprocess.run(
+                ["vegeta",
+                 "report",
+                 "-type=json"],
+                stdin=result_gob,
+                stdout=metrics_json_file,
+                stderr=subprocess.PIPE
+            )
+
+        result_gob.seek(0)
+
+        # Create a report to be printed during the benchmark
+        p_report = subprocess.run(
+            ["vegeta",
+                "report"],
+            stdin=result_gob,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+
+    # Remove generated files
+    os.remove("/graphql-bench/ws/results.gob")
+    for file in glob.glob('/graphql-bench/ws/queries/*.json'):
+        os.remove(file)
+
+    if p_report.returncode != 0:
+        for l in str(p_report.stderr, encoding="utf-8").splitlines():
             eprint(l, 3)
         return None
     else:
-        for l in p.stdout.splitlines():
+        for l in str(p_report.stdout, encoding="utf-8").splitlines():
             eprint(l, 3)
-        return json.loads(p.stderr)
+        with open("/graphql-bench/ws/metrics.json", "r") as metrics_json_file:
+            return json.loads(metrics_json_file.read())
 
-def benchCandidate(url, queriesFile, query, headers, rpsList, openConns, duration, timeout, luaScript):
+
+def bench_candidate(url, queries_file, query, headers, rpsList, open_connections, duration, timeout):
     results = {}
     for rps in rpsList:
         eprint("+" * 20, 3)
-        eprint("{rps}Req/s Duration:{duration}s open connections:{openConns}".format(
+        eprint("Rate: {rps} req/s || Duration: {duration}s || # Open connections: {open_connections}".format(
             rps=rps,
             duration=duration,
-            openConns=openConns
+            open_connections=open_connections
         ), 3)
-        res = runWrk2(url, queriesFile, query, headers, rps, openConns, duration, timeout, luaScript)
+        res = runBenchmarker(url, queries_file, query, headers,
+                             rps, open_connections, duration, timeout)
         results[rps] = res
     return results
 
-def benchQuery(benchParams):
+def bench_query(bench_params):
 
-    benchName = benchParams["name"]
+    bench_name = bench_params["name"]
 
     eprint("=" * 20, 0)
-    eprint("benchmark: {}".format(benchName), 0)
+    eprint("benchmark: {}".format(bench_name), 0)
 
-    rpsList = benchParams["rps"]
-    timeout = benchParams.get("timeout", "1s")
-    duration = benchParams["duration"]
-    openConns = benchParams.get("open_connections", 20)
-    warmupDuration = benchParams.get("warmup_duration", None)
-    query = benchParams.get("query")
-    queriesFile = benchParams.get("queries_file")
-    headers = benchParams.get("headers")
+    rpsList = bench_params["rps"]
+    timeout = bench_params.get("timeout", "1s")
+    duration = bench_params["duration"]
+    open_connections = bench_params.get("open_connections", 20)
+    warmup_duration = bench_params.get("warmup_duration", None)
+    query = bench_params.get("query")
+    queries_file = bench_params.get("queries_file")
+    headers = bench_params.get("headers")
 
     results = {}
 
-    for candidate in benchParams["candidates"]:
+    for candidate in bench_params["candidates"]:
 
-        candidateName = candidate["name"]
-        candidateUrl = candidate["url"]
-        candidateQuery = candidate.get("query", query)
-        candidateQueriesFile = candidate.get("queries_file", queriesFile)
-        candidateHeaders = candidate.get("headers", headers)
-        candidateLuaScript = candidate.get('lua_script')
+        candidate_name = candidate["name"]
+        candidate_url = candidate["url"]
+        candidate_query = candidate.get("query", query)
+        candidate_queries_file = candidate.get("queries_file", queries_file)
+        candidate_headers = candidate.get("headers", headers)
 
         eprint("-" * 20, 1)
-        eprint("candidate: {} on {} at {}".format(candidateQuery, candidateName, candidateUrl), 1)
+        eprint("candidate: {} on {} at {}".format(
+            candidate_query, candidate_name, candidate_url), 1)
 
-        if warmupDuration:
+        if warmup_duration:
             eprint("Warmup:", 2)
-            benchCandidate(candidateUrl, candidateQueriesFile, candidateQuery, candidateHeaders,
-                           rpsList, openConns, warmupDuration, timeout, candidateLuaScript)
+            bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_headers,
+                           rpsList, open_connections, warmup_duration, timeout)
 
         eprint("Benchmark:", 2)
-        candidateRes = benchCandidate(candidateUrl, candidateQueriesFile, candidateQuery, candidateHeaders,
-                                      rpsList, openConns, duration, timeout, candidateLuaScript)
-        results[candidateName] = candidateRes
+        candidateRes = bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_headers,
+                                      rpsList, open_connections, duration, timeout)
+        results[candidate_name] = candidateRes
 
     return {
-        "benchmark": benchName,
+        "benchmark": bench_name,
         "results": results
     }
 
 def bench(args):
-    benchSpecs = yaml.load(args.spec)
+    bench_specs = yaml.load(args.spec, Loader=yaml.FullLoader)
     bench = args.bench
     if bench:
-        benchSpecs = list(filter(lambda bs: bs['name'] == bench, benchSpecs))
-        if not benchSpecs:
+        bench_specs = list(filter(lambda bs: bs['name'] == bench, bench_specs))
+        if not bench_specs:
             print("no such benchmark exists in the spec: {}".format(bench))
             sys.exit(1)
     results = []
-    for benchSpec in benchSpecs:
-        results.append(benchQuery(benchSpec))
+    for bench_spec in bench_specs:
+        results.append(bench_query(bench_spec))
     return results
 
 if __name__ == "__main__":
