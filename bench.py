@@ -53,14 +53,13 @@ def runBenchmarker(url, queries_file, query, headers, rps, open_connections, dur
 
         result_gob.seek(0)
 
-        # Output a vegeta report in a JSON format to a file
-        with open("/graphql-bench/ws/metrics.json", "w+", encoding='utf-8') as metrics_json_file:
-            subprocess.run(
+        # Output a vegeta report in a JSON format
+        p_json_report = subprocess.run(
                 ["vegeta",
                  "report",
                  "-type=json"],
                 stdin=result_gob,
-                stdout=metrics_json_file,
+            stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE
             )
 
@@ -77,6 +76,7 @@ def runBenchmarker(url, queries_file, query, headers, rps, open_connections, dur
 
     # Remove generated files
     os.remove("/graphql-bench/ws/results.gob")
+
     for file in glob.glob('/graphql-bench/ws/queries/*.json'):
         os.remove(file)
 
@@ -87,8 +87,7 @@ def runBenchmarker(url, queries_file, query, headers, rps, open_connections, dur
     else:
         for l in str(p_report.stdout, encoding="utf-8").splitlines():
             eprint(l, 3)
-        with open("/graphql-bench/ws/metrics.json", "r") as metrics_json_file:
-            return json.loads(metrics_json_file.read())
+        return json.loads(str(p_json_report.stdout, encoding="utf-8"))
 
 
 def bench_candidate(url, queries_file, query, headers, rpsList, open_connections, duration, timeout):
