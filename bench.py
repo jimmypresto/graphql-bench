@@ -178,4 +178,5 @@ if __name__ == "__main__":
     parser.add_argument('--bench', nargs='?', type=str)
     args = parser.parse_args()
     results = bench(args)
-    run_dash_server(results)
+    with open("/graphql-bench/ws/bench_results.json", "w+") as resultFile:
+        json.dump(results, resultFile)
