@@ -44,7 +44,7 @@ def runBenchmarker(url, queries_file, query, headers, rps, open_connections, dur
                 '-duration', "{}s".format(duration),
                 '-connections', "{}".format(open_connections),
                 '-timeout', "{}".format(timeout),
-                '-body', '/graphql-bench/ws/queries/Introspection.graphql.json']
+                '-body', '/graphql-bench/ws/{}.json'.format(queries_file)]
             + allHeaders,
             input='POST {}'.format(url).encode('utf-8'),
             stdout=result_gob,
