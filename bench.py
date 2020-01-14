@@ -21,11 +21,16 @@ fileLoc = os.path.dirname(os.path.abspath(__file__))
 def eprint(msg, indent):
     print((' ' * 2 * indent) + msg, file=sys.stderr)
 
-def runBenchmarker(url, queries_file, query, headers, rps, open_connections, duration, timeout):
+def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open_connections, duration, timeout):
     with open("/graphql-bench/ws/{}".format(queries_file), "r") as query_body_file:
         with open("/graphql-bench/ws/{}.json".format(queries_file), "w+") as query_body_json_file:
-            json.dump({"query": query_body_file.read(),
-                       "operationName": query}, query_body_json_file)
+            if query_variables is not None:
+                json.dump({"query": query_body_file.read(),
+                        "operationName": query,
+                        "variables": query_variables }, query_body_json_file)
+            else:
+                json.dump({"query": query_body_file.read(),
+                        "operationName": query}, query_body_json_file)
 
     YOUR_BEARER_TOKEN = "Put your bears here."
     allHeaders = ['-header',
@@ -55,13 +60,13 @@ def runBenchmarker(url, queries_file, query, headers, rps, open_connections, dur
 
         # Output a vegeta report in a JSON format
         p_json_report = subprocess.run(
-                ["vegeta",
-                 "report",
-                 "-type=json"],
-                stdin=result_gob,
+            ["vegeta",
+                "report",
+                "-type=json"],
+            stdin=result_gob,
             stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
+            stderr=subprocess.PIPE
+        )
 
         result_gob.seek(0)
 
@@ -90,16 +95,17 @@ def runBenchmarker(url, queries_file, query, headers, rps, open_connections, dur
         return json.loads(str(p_json_report.stdout, encoding="utf-8"))
 
 
-def bench_candidate(url, queries_file, query, headers, rpsList, open_connections, duration, timeout):
+def bench_candidate(url, queries_file, query, query_variables, headers, rpsList, open_connections, duration, timeout):
     results = {}
     for rps in rpsList:
         eprint("+" * 20, 3)
-        eprint("Rate: {rps} req/s || Duration: {duration}s || # Open connections: {open_connections}".format(
+        eprint("Rate: {rps} req/s || Duration: {duration}s || # Open connections: {open_connections} || Query variables: {query_variables}".format(
             rps=rps,
             duration=duration,
-            open_connections=open_connections
+            open_connections=open_connections,
+            query_variables=query_variables
         ), 3)
-        res = runBenchmarker(url, queries_file, query, headers,
+        res = runBenchmarker(url, queries_file, query, query_variables, headers,
                              rps, open_connections, duration, timeout)
         results[rps] = res
     return results
@@ -118,6 +124,7 @@ def bench_query(bench_params):
     warmup_duration = bench_params.get("warmup_duration", None)
     query = bench_params.get("query")
     queries_file = bench_params.get("queries_file")
+    query_variables = bench_params.get("query_variables")
     headers = bench_params.get("headers")
 
     results = {}
@@ -128,6 +135,7 @@ def bench_query(bench_params):
         candidate_url = candidate["url"]
         candidate_query = candidate.get("query", query)
         candidate_queries_file = candidate.get("queries_file", queries_file)
+        candidate_query_variables = candidate.get("query_variables", query_variables)
         candidate_headers = candidate.get("headers", headers)
 
         eprint("-" * 20, 1)
@@ -136,11 +144,11 @@ def bench_query(bench_params):
 
         if warmup_duration:
             eprint("Warmup:", 2)
-            bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_headers,
+            bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers,
                            rpsList, open_connections, warmup_duration, timeout)
 
         eprint("Benchmark:", 2)
-        candidateRes = bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_headers,
+        candidateRes = bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers,
                                       rpsList, open_connections, duration, timeout)
         results[candidate_name] = candidateRes
 
