@@ -23,14 +23,16 @@ def eprint(msg, indent):
 
 def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open_connections, duration, timeout):
     with open("/graphql-bench/ws/{}".format(queries_file), "r") as query_body_file:
-        with open("/graphql-bench/ws/{}.json".format(queries_file), "w+") as query_body_json_file:
-            if query_variables is not None:
-                json.dump({"query": query_body_file.read(),
-                        "operationName": query,
-                        "variables": query_variables }, query_body_json_file)
-            else:
-                json.dump({"query": query_body_file.read(),
-                        "operationName": query}, query_body_json_file)
+        jsonPath = "/graphql-bench/ws/{}.json".format(queries_file)
+        if not os.path.exists(jsonPath):
+            with open(jsonPath, "w+") as query_body_json_file:
+                if query_variables is not None:
+                    json.dump({"query": query_body_file.read(),
+                            "operationName": query,
+                            "variables": query_variables }, query_body_json_file)
+                else:
+                    json.dump({"query": query_body_file.read(),
+                            "operationName": query}, query_body_json_file)
 
     YOUR_BEARER_TOKEN = "Put your bears here."
     allHeaders = ['-header',
@@ -81,9 +83,6 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
 
     # Remove generated files
     os.remove("/graphql-bench/ws/results.gob")
-
-    for file in glob.glob('/graphql-bench/ws/queries/*.json'):
-        os.remove(file)
 
     if p_report.returncode != 0:
         for l in str(p_report.stderr, encoding="utf-8").splitlines():
