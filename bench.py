@@ -47,7 +47,7 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
         subprocess.run(
             ['vegeta',
                 'attack',
-                '-rate', "{}/1s".format(rps),
+                '-rate', "{}".format(rps),
                 '-duration', "{}s".format(duration),
                 '-connections', "{}".format(open_connections),
                 '-timeout', "{}".format(timeout),
