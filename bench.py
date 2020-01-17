@@ -109,8 +109,7 @@ def bench_candidate(url, queries_file, query, query_variables, headers, rpsList,
         results[rps] = res
     return results
 
-def bench_query(bench_params):
-
+def bench_query(bench_params, desired_candidate):
     bench_name = bench_params["name"]
 
     eprint("=" * 20, 0)
@@ -128,8 +127,12 @@ def bench_query(bench_params):
 
     results = {}
 
-    for candidate in bench_params["candidates"]:
+    candidates = bench_params["candidates"]
 
+    if desired_candidate:
+        candidates = list(filter(lambda bc: bc['name'] == desired_candidate, candidates))
+    
+    for candidate in candidates:
         candidate_name = candidate["name"]
         candidate_url = candidate["url"]
         candidate_query = candidate.get("query", query)
@@ -159,6 +162,7 @@ def bench_query(bench_params):
 def bench(args):
     bench_specs = yaml.load(args.spec, Loader=yaml.FullLoader)
     bench = args.bench
+    candidate = args.candidate
     if bench:
         bench_specs = list(filter(lambda bs: bs['name'] == bench, bench_specs))
         if not bench_specs:
@@ -166,7 +170,7 @@ def bench(args):
             sys.exit(1)
     results = []
     for bench_spec in bench_specs:
-        results.append(bench_query(bench_spec))
+        results.append(bench_query(bench_spec, candidate))
     return results
 
 if __name__ == "__main__":
@@ -175,6 +179,7 @@ if __name__ == "__main__":
         '--spec', nargs='?', type=argparse.FileType('r'),
         default=sys.stdin)
     parser.add_argument('--bench', nargs='?', type=str)
+    parser.add_argument('--candidate', nargs='?', type=str)
     args = parser.parse_args()
     results = bench(args)
     with open("/graphql-bench/ws/bench_results.json", "w+") as resultFile:
