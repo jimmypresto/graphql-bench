@@ -146,12 +146,10 @@ def bench_query(bench_params, desired_candidate):
 
         if warmup_duration:
             eprint("Warmup:", 2)
-            bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers,
-                           rpsList, open_connections, warmup_duration, timeout)
+            bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers, rpsList, open_connections, warmup_duration, timeout)
 
         eprint("Benchmark:", 2)
-        candidateRes = bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers,
-                                      rpsList, open_connections, duration, timeout)
+        candidateRes = bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers, rpsList, open_connections, duration, timeout)
         results[candidate_name] = candidateRes
 
     return {
@@ -162,7 +160,7 @@ def bench_query(bench_params, desired_candidate):
 def bench(args):
     bench_specs = yaml.load(args.spec, Loader=yaml.FullLoader)
     bench = args.bench
-    candidate = args.candidate
+    desired_candidate = args.candidate
     if bench:
         bench_specs = list(filter(lambda bs: bs['name'] == bench, bench_specs))
         if not bench_specs:
@@ -170,7 +168,7 @@ def bench(args):
             sys.exit(1)
     results = []
     for bench_spec in bench_specs:
-        results.append(bench_query(bench_spec, candidate))
+        results.append(bench_query(bench_spec, desired_candidate))
     return results
 
 if __name__ == "__main__":
