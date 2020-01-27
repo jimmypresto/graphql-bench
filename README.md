@@ -1,6 +1,6 @@
 # graphql-bench
 
-A simple benchmarking tool to run GraphQL queries against your GraphQL backend and get a preliminary sense of its performance characteristics. 
+A simple benchmarking tool to run GraphQL queries against your GraphQL backend and get a preliminary sense of its performance characteristics.
 
 Usage: You write your GrahphQL queries in a file, run a command, and your browser opens up with graphs :)
 
@@ -14,6 +14,7 @@ Usage: You write your GrahphQL queries in a file, run a command, and your browse
 You'll need `docker` installed on your machine. All the tooling necessary to run and visualise benchmarks is packaged in a docker image.
 
 1. Create a file, say `queries.graphql` with the queries that you are interested in benchmarking.
+
    ```graphql
    query HeroNameQuery {
      hero {
@@ -23,6 +24,7 @@ You'll need `docker` installed on your machine. All the tooling necessary to run
    ```
 
 1. Specify the benchmarking configuration in a file, say `bench.yaml`.
+
    ```yaml
    - name: hero_name
      warmup_duration: 60
@@ -38,17 +40,18 @@ You'll need `docker` installed on your machine. All the tooling necessary to run
    ```
 
 1. Run the benchmark(s).
+
    ```bash
    cat bench.yaml | docker run -i --rm -p 8050:8050 -v $(pwd)/queries.graphql:/graphql-bench/ws/queries.graphql hasura/graphql-bench:v0.3
    ```
 
-1. This opens up a http server at http://127.0.0.1:8050 which displays the results of the benchmark.
+1. This opens up a http server at <http://127.0.0.1:8050> which displays the results of the benchmark.
    ![graph example](assets/example_simple.png)
-
 
 ## bench.yaml
 
 This file specifes the benchmarks that need to be run. The file is a list of benchmark specifications as follows:
+
 ```yaml
   # name of the benchmark.
 - name: tracks_media_some
@@ -69,8 +72,13 @@ This file specifes the benchmarks that need to be run. The file is a list of ben
   candidates:
   - name: myserver
     url: http://172.17.0.1:7080
+    headers:
+      - 'Content-Type: application/json'
     query: abc
     queries_file: queries.graphql
+    query_variables:
+      count: 10
+
 
   # Requests/sec
   rps:
