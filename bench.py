@@ -15,6 +15,7 @@ import glob
 
 from plot import run_dash_server
 
+YOUR_BEARER_TOKEN = "BEARER_TOKEN_PLACEHOLDER"
 cpuCount = multiprocessing.cpu_count()
 fileLoc = os.path.dirname(os.path.abspath(__file__))
 
@@ -34,7 +35,6 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
                     json.dump({"query": query_body_file.read(),
                             "operationName": query}, query_body_json_file)
 
-    YOUR_BEARER_TOKEN = "Put your bears here."
     allHeaders = ['-header',
                   'Authorization: Bearer {}'.format(YOUR_BEARER_TOKEN)]
 
@@ -152,6 +152,8 @@ def bench_query(bench_params, desired_candidate):
         candidateRes = bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers, rpsList, open_connections, duration, timeout)
         results[candidate_name] = candidateRes
 
+    eprint("=" * 20, 0)
+
     return {
         "benchmark": bench_name,
         "results": results
@@ -178,7 +180,11 @@ if __name__ == "__main__":
         default=sys.stdin)
     parser.add_argument('--bench', nargs='?', type=str)
     parser.add_argument('--candidate', nargs='?', type=str)
+    parser.add_argument('--token', nargs='?', type=str)
     args = parser.parse_args()
+
+    YOUR_BEARER_TOKEN = args.token
+
     results = bench(args)
     with open("/graphql-bench/ws/bench_results.json", "w+") as resultFile:
         json.dump(results, resultFile)
