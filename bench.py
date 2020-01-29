@@ -183,7 +183,8 @@ if __name__ == "__main__":
     parser.add_argument('--token', nargs='?', type=str)
     args = parser.parse_args()
 
-    YOUR_BEARER_TOKEN = args.token
+    if args.token is not None:
+        YOUR_BEARER_TOKEN = args.token
 
     results = bench(args)
     with open("/graphql-bench/ws/bench_results.json", "w+") as resultFile:
