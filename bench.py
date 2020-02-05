@@ -35,8 +35,12 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
                     json.dump({"query": query_body_file.read(),
                             "operationName": query}, query_body_json_file)
 
-    allHeaders = ['-header',
-                  'Authorization: Bearer {}'.format(YOUR_BEARER_TOKEN)]
+    allHeaders = []
+
+    # Omit the Auth header for Introspection.
+    if query != "Introspection":
+        allHeaders = ['-header',
+                    'Authorization: Bearer {}'.format(YOUR_BEARER_TOKEN)]
 
     if headers != None:
         for header in headers:
