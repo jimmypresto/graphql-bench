@@ -50,12 +50,12 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
     # See https://github.com/tsenart/vegeta for documentation on these args.
     with open("/graphql-bench/ws/results.gob", "w+") as result_gob:
         command = ['vegeta',
-                'attack',
-                '-rate', "{}".format(rps),
-                '-duration', "{}s".format(duration),
-                '-connections', "{}".format(open_connections),
+                   'attack',
+                   '-rate', "{}".format(rps),
+                   '-duration', "{}s".format(duration),
+                   '-connections', "{}".format(open_connections),
                    '-workers', "{}".format(workers),
-                '-timeout', "{}".format(timeout),
+                   '-timeout', "{}".format(timeout),
                    '-body', '/graphql-bench/ws/{}.json'.format(queries_file)] + allHeaders
 
         if max_workers != None:
@@ -68,6 +68,15 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
             stderr=subprocess.PIPE
         )
 
+        # Print error if one happened
+        if (completed_process.returncode != 0):
+            eprint("Error: Non-zero return code: {}".format(completed_process.returncode), 3)
+
+            for l in str(completed_process.stderr, encoding = "utf-8").splitlines():
+                eprint(l, 3)
+
+            return
+
         result_gob.seek(0)
 
         # Output a vegeta report in a JSON format
@@ -79,6 +88,15 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
+
+        # Print error if one happened
+        if (p_json_report.returncode != 0):
+            eprint("Error creating JSON report: Non-zero return code: {}".format(completed_process.returncode), 3)
+
+            for l in str(p_json_report.stderr, encoding="utf-8").splitlines():
+                eprint(l, 3)
+
+            return
 
         result_gob.seek(0)
 
@@ -97,7 +115,7 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
     if p_report.returncode != 0:
         for l in str(p_report.stderr, encoding="utf-8").splitlines():
             eprint(l, 3)
-        return None
+        return
     else:
         for l in str(p_report.stdout, encoding="utf-8").splitlines():
             eprint(l, 3)
