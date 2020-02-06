@@ -47,6 +47,7 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
             allHeaders.extend(['-header', header])
 
     # Run the benchmark
+    # See https://github.com/tsenart/vegeta for documentation on these args.
     with open("/graphql-bench/ws/results.gob", "w+") as result_gob:
         subprocess.run(
             ['vegeta',
