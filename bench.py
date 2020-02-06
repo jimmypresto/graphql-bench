@@ -22,7 +22,7 @@ fileLoc = os.path.dirname(os.path.abspath(__file__))
 def eprint(msg, indent):
     print((' ' * 2 * indent) + msg, file=sys.stderr)
 
-def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open_connections, duration, timeout):
+def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open_connections, workers, max_workers, duration, timeout):
     with open("/graphql-bench/ws/{}".format(queries_file), "r") as query_body_file:
         jsonPath = "/graphql-bench/ws/{}.json".format(queries_file)
         if not os.path.exists(jsonPath):
@@ -49,15 +49,20 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
     # Run the benchmark
     # See https://github.com/tsenart/vegeta for documentation on these args.
     with open("/graphql-bench/ws/results.gob", "w+") as result_gob:
-        subprocess.run(
-            ['vegeta',
+        command = ['vegeta',
                 'attack',
                 '-rate', "{}".format(rps),
                 '-duration', "{}s".format(duration),
                 '-connections', "{}".format(open_connections),
+                   '-workers', "{}".format(workers),
                 '-timeout', "{}".format(timeout),
-                '-body', '/graphql-bench/ws/{}.json'.format(queries_file)]
-            + allHeaders,
+                   '-body', '/graphql-bench/ws/{}.json'.format(queries_file)] + allHeaders
+
+        if max_workers != None:
+            command = command + ['-max-workers', "{}".format(max_workers)]
+
+        completed_process = subprocess.run(
+            command,
             input='POST {}'.format(url).encode('utf-8'),
             stdout=result_gob,
             stderr=subprocess.PIPE
@@ -99,18 +104,16 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
         return json.loads(str(p_json_report.stdout, encoding="utf-8"))
 
 
-def bench_candidate(url, queries_file, query, query_variables, headers, rpsList, open_connections, duration, timeout):
+def bench_candidate(url, queries_file, query, query_variables, headers, rpsList, open_connections, workers, max_workers, duration, timeout):
     results = {}
     for rps in rpsList:
         eprint("+" * 20, 3)
-        eprint("Rate: {rps} req/s || Duration: {duration}s || # Open connections: {open_connections} || Query variables: {query_variables}".format(
-            rps=rps,
-            duration=duration,
-            open_connections=open_connections,
-            query_variables=query_variables
-        ), 3)
+        eprint("Rate: {rps} req/s || Workers: {workers} || Max Workers: {max_workers}"
+                .format(rps=rps, workers=workers, max_workers=max_workers), 3)
+        eprint("# Open connections: {open_connections} || Duration: {duration}s || Query variables: {query_variables}"
+        .format(open_connections=open_connections, duration=duration, query_variables=query_variables), 3)
         res = runBenchmarker(url, queries_file, query, query_variables, headers,
-                             rps, open_connections, duration, timeout)
+                             rps, open_connections, workers, max_workers, duration, timeout)
         results[rps] = res
     return results
 
@@ -123,7 +126,9 @@ def bench_query(bench_params, desired_candidate):
     rpsList = bench_params["rps"]
     timeout = bench_params.get("timeout", "1s")
     duration = bench_params["duration"]
-    open_connections = bench_params.get("open_connections", 20)
+    open_connections = bench_params.get("open_connections", 10000)
+    workers = bench_params.get("workers", 10)
+    max_workers = bench_params.get("max_workers", None)
     warmup_duration = bench_params.get("warmup_duration", None)
     query = bench_params.get("query")
     queries_file = bench_params.get("queries_file")
@@ -151,10 +156,10 @@ def bench_query(bench_params, desired_candidate):
 
         if warmup_duration:
             eprint("Warmup:", 2)
-            bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers, rpsList, open_connections, warmup_duration, timeout)
+            bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers, rpsList, open_connections, workers, max_workers, warmup_duration, timeout)
 
         eprint("Benchmark:", 2)
-        candidateRes = bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers, rpsList, open_connections, duration, timeout)
+        candidateRes = bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers, rpsList, open_connections, workers, max_workers, duration, timeout)
         results[candidate_name] = candidateRes
 
     eprint("=" * 20, 0)
