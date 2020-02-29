@@ -13,6 +13,8 @@ import sys
 import os
 import glob
 
+import requests
+
 from plot import run_dash_server
 
 YOUR_BEARER_TOKEN = "BEARER_TOKEN_PLACEHOLDER"
@@ -21,6 +23,24 @@ fileLoc = os.path.dirname(os.path.abspath(__file__))
 
 def eprint(msg, indent):
     print((' ' * 2 * indent) + msg, file=sys.stderr)
+
+def sanityCheck(url, headers_arr, query_body_json):
+    headers_dict = {}
+
+    if headers_arr is not None:
+        headers_dict = { header.split(':')[0].strip(): header.split(':')[1].strip() for header in filter(lambda x: x != "-header", headers_arr) }
+
+    response = requests.post(url, headers=headers_dict, data=query_body_json)
+    response_json = response.json()
+    response_errors = response_json.get("errors", [])
+
+    is_successful = response.status_code == requests.codes.ok and len(response_errors) == 0
+
+    if not is_successful:
+        eprint("Sanity check failed with errors:", 3)
+        eprint(str(response_errors), 3)
+
+    return is_successful
 
 def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open_connections, workers, max_workers, duration, timeout):
     with open("/graphql-bench/ws/{}".format(queries_file), "r") as query_body_file:
@@ -45,6 +65,11 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
     if headers != None:
         for header in headers:
             allHeaders.extend(['-header', header])
+
+    # Run a sanity check on the GraphQL query.
+    with open("/graphql-bench/ws/{}.json".format(queries_file)) as query_body_json:
+        if not sanityCheck(url, allHeaders, query_body_json):
+            return
 
     # Run the benchmark
     # See https://github.com/tsenart/vegeta for documentation on these args.
