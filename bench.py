@@ -18,6 +18,7 @@ import requests
 from plot import run_dash_server
 
 YOUR_BEARER_TOKEN = "BEARER_TOKEN_PLACEHOLDER"
+cleanRun = True
 cpuCount = multiprocessing.cpu_count()
 fileLoc = os.path.dirname(os.path.abspath(__file__))
 
@@ -39,6 +40,7 @@ def sanityCheck(url, headers_arr, query_body_json):
     if not is_successful:
         eprint("Sanity check failed with errors:", 3)
         eprint(str(response_errors), 3)
+        cleanRun = False
 
     return is_successful
 
@@ -240,5 +242,9 @@ if __name__ == "__main__":
         YOUR_BEARER_TOKEN = args.token
 
     results = bench(args)
+
     with open("/graphql-bench/ws/bench_results.json", "w+") as resultFile:
         json.dump(results, resultFile)
+        
+    if not cleanRun:
+        sys.exit(1)
