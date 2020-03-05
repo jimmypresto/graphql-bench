@@ -32,6 +32,11 @@ def sanityCheck(url, headers_arr, query_body_json):
         headers_dict = { header.split(':')[0].strip(): header.split(':')[1].strip() for header in filter(lambda x: x != "-header", headers_arr) }
 
     response = requests.post(url, headers=headers_dict, data=query_body_json)
+
+    if response.status_code != requests.codes.ok and response.text == None:
+        eprint("Sanity check failed to return a response with code: {}.".format(response.status_code), 3)
+        cleanRun = False
+
     response_json = response.json()
     response_errors = response_json.get("errors", [])
 
