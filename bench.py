@@ -26,6 +26,7 @@ def eprint(msg, indent):
     print((' ' * 2 * indent) + msg, file=sys.stderr)
 
 def sanityCheck(url, headers_arr, query_body_json):
+    global cleanRun
     headers_dict = {}
 
     if headers_arr is not None:
@@ -33,12 +34,13 @@ def sanityCheck(url, headers_arr, query_body_json):
 
     response = requests.post(url, headers=headers_dict, data=query_body_json)
 
-    if response.text == None:
-        eprint("Sanity check failed to return a response with code: {}.".format(response.status_code), 3)
+    try:
+        response_json = response.json()
+    except:
+        eprint("Sanity check failed to return a response body with code: {}.".format(response.status_code), 3)
         cleanRun = False
         return False
 
-    response_json = response.json()
     response_errors = response_json.get("errors", [])
 
     is_successful = response.status_code == requests.codes.ok and len(response_errors) == 0
