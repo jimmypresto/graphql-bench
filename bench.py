@@ -36,6 +36,7 @@ def sanityCheck(url, headers_arr, query_body_json):
     if response.text == None:
         eprint("Sanity check failed to return a response with code: {}.".format(response.status_code), 3)
         cleanRun = False
+        return False
 
     response_json = response.json()
     response_errors = response_json.get("errors", [])
