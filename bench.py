@@ -33,7 +33,7 @@ def sanityCheck(url, headers_arr, query_body_json):
 
     response = requests.post(url, headers=headers_dict, data=query_body_json)
 
-    if response.status_code != requests.codes.ok and response.text == None:
+    if response.text == None:
         eprint("Sanity check failed to return a response with code: {}.".format(response.status_code), 3)
         cleanRun = False
 
