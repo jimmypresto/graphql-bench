@@ -55,15 +55,14 @@ def sanityCheck(url, headers_arr, query_body_json):
 def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open_connections, workers, max_workers, duration, timeout):
     with open("/graphql-bench/ws/{}".format(queries_file), "r") as query_body_file:
         jsonPath = "/graphql-bench/ws/{}.json".format(queries_file)
-        if not os.path.exists(jsonPath):
-            with open(jsonPath, "w+") as query_body_json_file:
-                if query_variables is not None:
-                    json.dump({"query": query_body_file.read(),
-                            "operationName": query,
-                            "variables": query_variables }, query_body_json_file)
-                else:
-                    json.dump({"query": query_body_file.read(),
-                            "operationName": query}, query_body_json_file)
+        with open(jsonPath, "w+") as query_body_json_file:
+            if query_variables is not None:
+                json.dump({"query": query_body_file.read(),
+                        "operationName": query,
+                        "variables": query_variables }, query_body_json_file)
+            else:
+                json.dump({"query": query_body_file.read(),
+                        "operationName": query}, query_body_json_file)
 
     allHeaders = []
 
