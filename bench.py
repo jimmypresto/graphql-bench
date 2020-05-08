@@ -82,7 +82,9 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
 
     # Run the benchmark
     # See https://github.com/tsenart/vegeta for documentation on these args.
-    with open("/graphql-bench/ws/results.gob", "w+") as result_gob:
+
+    resultsPath = "/graphql-bench/ws/results.gob"
+    with open(resultsPath, "w+") as result_gob:
         command = ['vegeta',
                    'attack',
                    '-rate', "{}".format(rps),
@@ -144,7 +146,8 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
         )
 
     # Remove generated files
-    os.remove("/graphql-bench/ws/results.gob")
+    if os.path.exists(resultsPath):
+        os.remove(resultsPath)
 
     if p_report.returncode != 0:
         for l in str(p_report.stderr, encoding="utf-8").splitlines():
