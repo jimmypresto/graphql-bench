@@ -66,6 +66,8 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
 
     allHeaders = []
 
+    allHeaders.extend(['-header', "Worker-Count: {}".format(workers)])
+
     # Omit the Auth header for Introspection.
     if query != "Introspection":
         allHeaders = ['-header',
