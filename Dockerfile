@@ -18,4 +18,19 @@ COPY bench.py plot.py /graphql-bench/
 RUN mkdir -p /graphql-bench/ws
 WORKDIR /graphql-bench/ws/
 
+# install java
+RUN mkdir -p /usr/share/man/man1
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -yq --no-install-recommends default-jdk && \
+    apt-get clean
+
+# procps for the top command
+RUN apt-get -y update && apt-get -y install procps
+
+# Copy MetricsCollector jar
+RUN mkdir -p /usr/src/app/metricscollector
+COPY metricscollector/ /usr/src/app/metricscollector/
+RUN chmod +x /usr/src/app/metricscollector/
+
 ENTRYPOINT ["python3", "-u", "/graphql-bench/bench.py"]
