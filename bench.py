@@ -213,12 +213,12 @@ def bench_query(bench_params, desired_candidate):
 
         if warmup_duration:
             eprint("Warmup:", 2)
-            candidate_headers.extend(['-header', "Run-Type: Warmup"])
-            bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers, rpsList, open_connections, workers, max_workers, warmup_duration, timeout)
-            candidate_headers.remove(['-header', "Run-Type: Warmup"])
+            candidate_headers_warmup = candidate_headers
+            candidate_headers_warmup.extend(['-header', "Run-Type: Warmup"])
+            bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers_warmup, rpsList, open_connections, workers, max_workers, warmup_duration, timeout)
 
         eprint("Benchmark:", 2)
-        candidate_headers.extend(['-header', "RunType: Main"])
+        candidate_headers.extend(['-header', "Run-Type: Main"])
         candidateRes = bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers, rpsList, open_connections, workers, max_workers, duration, timeout)
         results[candidate_name] = candidateRes
 
