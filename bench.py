@@ -66,12 +66,12 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
 
     allHeaders = []
 
-    allHeaders.extend(['-header', "Worker-Count: {}".format(workers)])
-
     # Omit the Auth header for Introspection.
     if query != "Introspection":
         allHeaders = ['-header',
                     'Authorization: Bearer {}'.format(YOUR_BEARER_TOKEN)]
+
+    allHeaders.extend(['-header', "Worker-Count: {}".format(workers)])
 
     if headers != None:
         for header in headers:
@@ -213,9 +213,12 @@ def bench_query(bench_params, desired_candidate):
 
         if warmup_duration:
             eprint("Warmup:", 2)
+            candidate_headers.extend(['-header', "Run-Type: Warmup"])
             bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers, rpsList, open_connections, workers, max_workers, warmup_duration, timeout)
+            candidate_headers.remove(['-header', "Run-Type: Warmup"])
 
         eprint("Benchmark:", 2)
+        candidate_headers.extend(['-header', "RunType: Main"])
         candidateRes = bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers, rpsList, open_connections, workers, max_workers, duration, timeout)
         results[candidate_name] = candidateRes
 
