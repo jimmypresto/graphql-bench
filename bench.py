@@ -31,7 +31,7 @@ def sanityCheck(url, headers_arr, query_body_json):
     local_headers_arr = headers_arr[:]
 
     if headers_arr is not None:
-        local_headers_arr.extend(["Run-Type: Sanity"])
+        local_headers_arr.extend(['Run-Type: Sanity'])
         headers_dict = { header.split(':')[0].strip(): header.split(':')[1].strip() for header in filter(lambda x: x != "-header", local_headers_arr) }
 
     response = requests.post(url, headers=headers_dict, data=query_body_json)
@@ -66,13 +66,15 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
                 json.dump({"query": query_body_file.read(),
                         "operationName": query}, query_body_json_file)
 
-    allHeaders = ['-header']
+    allHeaders = []
 
     # Omit the Auth header for Introspection.
     if query != "Introspection":
-        allHeaders.extend(['Authorization: Bearer {}'.format(YOUR_BEARER_TOKEN)])
+        allHeaders.extend(['-header', 
+                            'Authorization: Bearer {}'.format(YOUR_BEARER_TOKEN)])
 
-    allHeaders.extend(["Worker-Count: {}".format(workers)])
+    allHeaders.extend(['-header', 
+                        "Worker-Count: {}".format(workers)])
 
     if headers != None:
         for header in headers:
@@ -83,8 +85,6 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
         if not sanityCheck(url, allHeaders, query_body_json):
             return
 
-    for header in allHeaders:
-        eprint(header, 3)
     # Run the benchmark
     # See https://github.com/tsenart/vegeta for documentation on these args.
 
@@ -97,10 +97,12 @@ def runBenchmarker(url, queries_file, query, query_variables, headers, rps, open
                    '-connections', "{}".format(open_connections),
                    '-workers', "{}".format(workers),
                    '-timeout', "{}".format(timeout),
-                   '-body', '/graphql-bench/ws/{}.json'.format(queries_file)] + allHeaders
+                   '-body', '/graphql-bench/ws/{}.json'.format(queries_file)]
 
         if max_workers != None:
             command = command + ['-max-workers', "{}".format(max_workers)]
+        
+        command = command + allHeaders
 
         completed_process = subprocess.run(
             command,
@@ -210,19 +212,23 @@ def bench_query(bench_params, desired_candidate):
         candidate_query_variables = candidate.get("query_variables", query_variables)
         candidate_headers = candidate.get("headers", headers)
 
+        updated_candidate_headers = []
+        for header in candidate_headers:
+            updated_candidate_headers.extend(['-header', header])
+
         eprint("-" * 20, 1)
         eprint("candidate: {} on {} at {}".format(
             candidate_query, candidate_name, candidate_url), 1)
 
         if warmup_duration:
             eprint("Warmup:", 2)
-            candidate_headers_warmup = candidate_headers[:]
-            candidate_headers_warmup.extend(["Run-Type: Warmup"])
+            candidate_headers_warmup = updated_candidate_headers[:]
+            candidate_headers_warmup.extend(['-header', 'Run-Type: Warmup'])
             bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers_warmup, rpsList, open_connections, workers, max_workers, warmup_duration, timeout)
 
         eprint("Benchmark:", 2)
-        candidate_headers.extend(["Run-Type: Main"])
-        candidateRes = bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, candidate_headers, rpsList, open_connections, workers, max_workers, duration, timeout)
+        updated_candidate_headers.extend(['-header', 'Run-Type: Main'])
+        candidateRes = bench_candidate(candidate_url, candidate_queries_file, candidate_query, candidate_query_variables, updated_candidate_headers, rpsList, open_connections, workers, max_workers, duration, timeout)
         results[candidate_name] = candidateRes
 
     eprint("=" * 20, 0)
