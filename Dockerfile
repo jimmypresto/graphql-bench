@@ -1,7 +1,6 @@
-FROM golang:1.13.5-stretch as go-image
+FROM golang:1.20.0-bullseye as go-image
 
-RUN go get -u github.com/tsenart/vegeta
-
+RUN go install github.com/tsenart/vegeta@latest
 
 FROM python:3.7-slim
 RUN apt-get update \
